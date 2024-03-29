@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+ <html>
+ <head>
+     <title>Scroll Distance Calculator with Auto-Return on Wheel Stop</title>
+     <style>
+         #content {
+             width: 100%;
+             height: 200000000px;
+             background-image: linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc), linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
+             background-size: 100px 100px;
+             background-position: 0 0, 50px 50px;
+         }
+         #result, #lastScore, #resetButton, #ranking {
+             position: fixed;
+             padding: 10px;
+             border-radius: 5px;
+             background-color: rgba(255, 255, 255, 0.8);
+             z-index: 1000;
+         }
+         #result {
+             top: 20px;
+             left: 20px;
+         }
+         #lastScore {
+             top: 70px;
+             left: 20px;
+         }
+         #resetButton {
+             bottom: 20px;
+             right: 20px;
+             cursor: pointer;
+         }
+         #ranking {
+             top: 20px;
+             right: 20px;
+             background-color: rgba(255, 255, 255, 0.9);
+             padding: 10px;
+             border-radius: 5px;
+             z-index: 1000;
+             font-size: 0.9em;
+             max-height: 300px;
+             overflow-y: auto;
+         }
+     </style>
+ </head>
+ <body>
+ <div id="content">
+     <p>マウスホイール。</p>
+ </div>
+ <div id="result">
+     スクロール距離: <span id="distance">0</span> px
+ </div>
+ <div id="lastScore">
+     前回のスコア: <span id="lastScoreValue">0</span> px
+ </div>
+ <div id="ranking">ランキングを読み込み中...</div>
+ <button id="resetButton">ランキングリセット</button>
+ <script>
+ let scores = JSON.parse(localStorage.getItem('scores')) || [];
+ let lastScore = localStorage.getItem('lastScore');
+ document.getElementById('lastScoreValue').textContent = lastScore || '0';
+ updateRanking();
+ let triggerScroll = false;
+ let totalScrollDistance = 0;
+ let lastScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+ // マウスホイールイベント
+ window.addEventListener('wheel', () => {
+     triggerScroll = true;
+ });
+ window.addEventListener('scroll', () => {
+     if (!triggerScroll) return; // マウスホイール以外でのスクロールを無視
+     let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+     totalScrollDistance += Math.abs(scrollTop - lastScrollTop);
+     lastScrollTop = scrollTop;
+     document.getElementById('distance').textContent = totalScrollDistance;
+ });
+ let isScrolling;
+ window.addEventListener('scroll', () => {
+     clearTimeout(isScrolling);
+     isScrolling = setTimeout(() => {
+         if (triggerScroll && totalScrollDistance > 0) {
+             scores.push(totalScrollDistance);
+             localStorage.setItem('scores', JSON.stringify(scores.sort((a, b) => b - a).slice(0, 10)));
+             localStorage.setItem('lastScore', totalScrollDistance.toString());
+             updateRanking();
+             document.getElementById('lastScoreValue').textContent = totalScrollDistance.toString();
+             totalScrollDistance = 0;
+             document.getElementById('distance').textContent = '0';
+         }
+         triggerScroll = false; // リセット
+         window.scrollTo(0, 0); // マウスホイール操作が停止したらページの最上部に戻る
+     }, 150);
+ });
+ document.getElementById('resetButton').addEventListener('click', () => {
+     localStorage.removeItem('scores');
+     localStorage.removeItem('lastScore');
+     scores = [];
+     lastScore = '0';
+     document.getElementById('lastScoreValue').textContent = '0';
+     updateRanking();
+     alert('ランキングがリセットされました。');
+ });
+ function updateRanking() {
+     const rankingHTML = 'スクロール距離ランキング:<br>' +
+         scores.map((score, index) => `${index + 1}位: ${score} px`).join('<br>');
+     document.getElementById('ranking').innerHTML = rankingHTML;
+ }
+ </script>
+ </body>
+ </html>
